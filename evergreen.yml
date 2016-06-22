@@ -1,0 +1,63 @@
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operations. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/mongodb/curator
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+  - &test-tasks
+      - name: build
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  install_package:
+    command: shell.exec
+    params:
+       script: |
+         sudo apt-get install -y ${package_name}
+
+
+#######################################
+#                Tasks                #
+#######################################
+tasks:
+  # the build (with and without the race detector) and lint tasks use
+  # a template that does not include test result parsing.
+  - name: build
+    commands:
+      - command: git.get_project
+        params:
+          directory: github/nagmq
+      - func: install_package
+        vars: { package_name : "libzmq3-dev" }
+      - func: install_package
+	vars: { package_name: "libjansson-dev" }
+      - func: install_package
+	vars: { package_name: "libev-dev" }
+
+post:
+  - command: shell.exec
+    params:
+      script: |
+        rm -rf github/nagmq
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: ubuntu1404
+    display_name: Ubuntu 14.04
+    run_on:
+      - ubuntu1404-test
+    tasks:
+      *test-tasks
