@@ -41,9 +41,9 @@ tasks:
       - func: install_package
         vars: { package_name : "libzmq3-dev" }
       - func: install_package
-	vars: { package_name: "libjansson-dev" }
+        vars: { package_name: "libjansson-dev" }
       - func: install_package
-	vars: { package_name: "libev-dev" }
+        vars: { package_name: "libev-dev" }
 
 post:
   - command: shell.exec
