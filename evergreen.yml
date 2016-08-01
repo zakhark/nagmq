@@ -2,29 +2,46 @@
 #         YAML Templates              #
 #######################################
 variables:
-  - &run-build
-    # runs a build operations. The task name in evergreen should
-    # correspond to a make target for the build operation.
-    name: test
-    commands:
-      - command: git.get_project
-        params:
-          directory: gopath/src/github.com/mongodb/curator
-      - func: run-make
-        vars: { target: "${task_name}" }
-
-  - &test-tasks
+  - &build-tasks
       - name: build
+      - name: push
 
 #######################################
 #              Functions              #
 #######################################
 functions:
-  install_package:
+  run-make:
     command: shell.exec
     params:
        script: |
-         sudo apt-get install -y ${package_name}
+         set -o errexit
+         set -o verbose
+
+         root_dir=$(pwd)
+
+         cd nagmq/nagioscore-repo
+         ./configure
+
+         cd $root_dir/nagmq
+
+         autoreconf -i
+         ./configure --with-nagios4-src=$root_dir/nagmq/nagioscore-repo libev_LIBS="-L${lib_path}" libev_CFLAGS="-I${lib_path}" --exec-prefix=$root_dir/nagmq_bin
+         make
+         make install
+
+         tar zcf $root_dir/nagmq.tar.gz -C $root_dir/nagmq_bin .
+
+  upload-dist:
+    command: s3.put
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_file: nagmq.tar.gz
+      remote_file: nagmq/${build_id}-${build_variant}/nagmq-${revision}.tar.gz
+      bucket: mciuploads
+      content_type: application/x-gzip
+      permissions: public-read
+      display_name: nagmq-${revision}.tar.gz
 
 
 #######################################
@@ -37,27 +54,75 @@ tasks:
     commands:
       - command: git.get_project
         params:
-          directory: github/nagmq
-      - func: install_package
-        vars: { package_name : "libzmq3-dev" }
-      - func: install_package
-        vars: { package_name: "libjansson-dev" }
-      - func: install_package
-        vars: { package_name: "libev-dev" }
+          directory: "nagmq"
+          revisions: # for each module include revision as <module_name> : ${<module_name>_rev}
+            nagioscore-repo: ${nagioscore-repo_rev}
+      - func: run-make
+      - func: upload-dist
 
+  - name: push
+    depends_on:
+    - name: "*"
+    stepback: false
+    commands:
+      - command: s3Copy.copy
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          s3_copy_files:
+          - {'source': { 'path': 'nagmq/${build_id}-${build_variant}/nagmq-${revision}.tar.gz', 'bucket': 'mciuploads' },
+             'destination': { 'path': 'build/nagmq/nagmq-${build_variant}.tar.gz', 'bucket': 'boxes.10gen.com' }
+            }
 post:
   - command: shell.exec
     params:
       script: |
-        rm -rf github/nagmq
+        rm -rf nagmq
+        rm -rf nagioscore-repo
+
+#######################################
+#               Modules               #
+#######################################
+# if a module is added and to be added to the manifest
+# be sure to add the module to git.get_project revisions parameter
+modules:
+- name: nagioscore-repo
+  repo: git@github.com:NagiosEnterprises/nagioscore.git
+  branch: c3b627d3f4dcb2823d50c36436233b8a56315300
 
 #######################################
 #           Buildvariants             #
 #######################################
 buildvariants:
   - name: ubuntu1404
+    modules:
+      - nagioscore-repo
     display_name: Ubuntu 14.04
     run_on:
       - ubuntu1404-test
+    expansions:
+      lib_path: "/usr/lib/x86_64-linux-gnu/"
     tasks:
-      *test-tasks
+      *build-tasks
+
+  - name: ubuntu1604
+    modules:
+      - nagioscore-repo
+    display_name: Ubuntu 16.04
+    expansions:
+      lib_path: "/usr/lib/x86_64-linux-gnu/"
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      *build-tasks
+
+  - name: osx
+    modules:
+      - nagioscore-repo
+    display_name: Mac OSX 10.10
+    expansions:
+      lib_path: "/usr/local/lib/"
+    run_on:
+      - osx-1010
+    tasks:
+      *build-tasks
