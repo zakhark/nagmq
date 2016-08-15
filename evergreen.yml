@@ -71,7 +71,7 @@ tasks:
           aws_secret: ${aws_secret}
           s3_copy_files:
           - {'source': { 'path': 'nagmq/${build_id}-${build_variant}/nagmq-${revision}.tar.gz', 'bucket': 'mciuploads' },
-             'destination': { 'path': 'build/nagmq/nagmq-${build_variant}.tar.gz', 'bucket': 'boxes.10gen.com' }
+             'destination': { 'path': 'build/nagmq/nagmq-${build_variant}-${revision}.tar.gz', 'bucket': 'boxes.10gen.com' }
             }
 post:
   - command: shell.exec
