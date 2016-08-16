@@ -20,6 +20,8 @@ functions:
          root_dir=$(pwd)
 
          cd nagmq/nagioscore-repo
+         cp -p $root_dir/nagmq/config.guess.20160515 config.guess
+         cp -p $root_dir/nagmq/config.sub.20160620 config.sub
          ./configure
 
          cd $root_dir/nagmq
@@ -105,6 +107,28 @@ buildvariants:
     tasks:
       *build-tasks
 
+  - name: ubuntu1604-arm
+    modules:
+      - nagioscore-repo
+    display_name: Ubuntu 16.04 ARM
+    expansions:
+      lib_path: "/usr/lib/x86_64-linux-gnu/"
+    run_on:
+      - ubuntu1604-arm64-small
+    tasks:
+      *build-tasks
+
+  - name: ubuntu1604-s390x
+    modules:
+      - nagioscore-repo
+    display_name: Ubuntu 16.04 Z
+    expansions:
+      lib_path: "/usr/lib/x86_64-linux-gnu/"
+    run_on:
+      - ubuntu1604-zseries-small
+    tasks:
+      *build-tasks
+
   - name: ubuntu1604
     modules:
       - nagioscore-repo
@@ -113,6 +137,17 @@ buildvariants:
       lib_path: "/usr/lib/x86_64-linux-gnu/"
     run_on:
       - ubuntu1604-test
+    tasks:
+      *build-tasks
+
+  - name: ubuntu1604-ppc64le
+    modules:
+      - nagioscore-repo
+    display_name: Ubuntu 16.04 PPC
+    expansions:
+      lib_path: "/usr/lib/x86_64-linux-gnu/"
+    run_on:
+      - ubuntu1604-power8-test
     tasks:
       *build-tasks
 
