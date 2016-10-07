@@ -27,7 +27,8 @@ functions:
          cd $root_dir/nagmq
 
          autoreconf -i
-         ./configure --with-nagios4-src=$root_dir/nagmq/nagioscore-repo libev_LIBS="-L${lib_path}" libev_CFLAGS="-I${lib_path}" --exec-prefix=$root_dir/nagmq_bin
+         export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig/:/usr/lib64/pkgconfig:$PKG_CONFIG_PATH"
+         ./configure --with-nagios4-src=$root_dir/nagmq/nagioscore-repo libev_LIBS="-L${lib_path} -lev" libev_CFLAGS="-I/usr/include" ${extra_options} --exec-prefix=$root_dir/nagmq_bin
          make
          make install
 
@@ -121,7 +122,7 @@ buildvariants:
   - name: ubuntu1604-s390x
     modules:
       - nagioscore-repo
-    display_name: Ubuntu 16.04 Z
+    display_name: Ubuntu 16.04 zSeries 
     expansions:
       lib_path: "/usr/lib/x86_64-linux-gnu/"
     run_on:
@@ -159,5 +160,39 @@ buildvariants:
       lib_path: "/usr/local/lib/"
     run_on:
       - osx-1010
+    tasks:
+      *build-tasks
+
+  - name: rhel71-ppc
+    modules:
+      - nagioscore-repo
+    display_name: RHEL 7.1 PPC
+    expansions:
+      lib_path: "/usr/lib/"
+    run_on:
+      - rhel71-power8-test
+    tasks:
+      *build-tasks
+
+  - name: rhel72-z
+    modules:
+      - nagioscore-repo
+    display_name: RHEL 7.2 zSeries
+    expansions:
+      lib_path: "/usr/lib/"
+    run_on:
+      - rhel72-zseries-test
+    tasks:
+      *build-tasks
+
+  - name: sles12-z
+    modules:
+      - nagioscore-repo
+    display_name: SLES 12 zSeries
+    expansions:
+      lib_path: "/usr/lib/"
+      extra_options: 'libpcre_LIBS="-L/usr/lib64" libpcre_CFLAGS="-I/usr/include"'
+    run_on:
+      - suse12-zseries-test
     tasks:
       *build-tasks
