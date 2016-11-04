@@ -33,19 +33,8 @@ functions:
          make install
 
          tar zcf $root_dir/nagmq.tar.gz -C $root_dir/nagmq_bin .
-
-  upload-dist:
-    command: s3.put
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_file: nagmq.tar.gz
-      remote_file: nagmq/${build_id}-${build_variant}/nagmq-${revision}.tar.gz
-      bucket: mciuploads
-      content_type: application/x-gzip
-      permissions: public-read
-      display_name: nagmq-${revision}.tar.gz
-
+         rm -rf $root_dir/nagmq_bin/bin $root_dir/nagmq_bin/lib
+         tar zcf $root_dir/nagmq-client.tar.gz -C $root_dir/nagmq_bin .
 
 #######################################
 #                Tasks                #
@@ -61,7 +50,26 @@ tasks:
           revisions: # for each module include revision as <module_name> : ${<module_name>_rev}
             nagioscore-repo: ${nagioscore-repo_rev}
       - func: run-make
-      - func: upload-dist
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: nagmq.tar.gz
+          remote_file: nagmq/${build_variant}/nagmq-${build_id}.tar.gz
+          bucket: mciuploads
+          content_type: application/x-gzip
+          permissions: public-read
+          display_name: nagmq-${revision}.tar.gz
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: nagmq-client.tar.gz
+          remote_file: nagmq/${build_variant}/nagmq-client-${build_id}.tar.gz
+          bucket: mciuploads
+          content_type: application/x-gzip
+          permissions: public-read
+          display_name: nagmq-client-${revision}.tar.gz
 
   - name: push
     depends_on:
@@ -73,8 +81,16 @@ tasks:
           aws_key: ${aws_key}
           aws_secret: ${aws_secret}
           s3_copy_files:
-          - {'source': { 'path': 'nagmq/${build_id}-${build_variant}/nagmq-${revision}.tar.gz', 'bucket': 'mciuploads' },
+          - {'source': { 'path': 'nagmq/${build_variant}/nagmq-${build_id}.tar.gz', 'bucket': 'mciuploads' },
              'destination': { 'path': 'build/nagmq/nagmq-${build_variant}-${revision}.tar.gz', 'bucket': 'boxes.10gen.com' }
+            }
+      - command: s3Copy.copy
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          s3_copy_files:
+          - {'source': { 'path': 'nagmq/${build_variant}/nagmq-client-${build_id}.tar.gz', 'bucket': 'mciuploads' },
+             'destination': { 'path': 'build/nagmq/nagmq-client-${build_variant}-${revision}.tar.gz', 'bucket': 'boxes.10gen.com' }
             }
 post:
   - command: shell.exec
@@ -97,7 +113,7 @@ modules:
 #           Buildvariants             #
 #######################################
 buildvariants:
-  - name: ubuntu1404
+  - name: ubuntu1404-x86_64
     modules:
       - nagioscore-repo
     display_name: Ubuntu 14.04
@@ -108,7 +124,7 @@ buildvariants:
     tasks:
       *build-tasks
 
-  - name: ubuntu1604-arm
+  - name: ubuntu1604-aarch64
     modules:
       - nagioscore-repo
     display_name: Ubuntu 16.04 ARM
@@ -130,7 +146,7 @@ buildvariants:
     tasks:
       *build-tasks
 
-  - name: ubuntu1604
+  - name: ubuntu1604-x86_64
     modules:
       - nagioscore-repo
     display_name: Ubuntu 16.04
@@ -152,7 +168,7 @@ buildvariants:
     tasks:
       *build-tasks
 
-  - name: osx
+  - name: osx-x86_64
     modules:
       - nagioscore-repo
     display_name: Mac OSX 10.10
@@ -163,7 +179,7 @@ buildvariants:
     tasks:
       *build-tasks
 
-  - name: rhel71-ppc
+  - name: rhel71-ppc64le
     modules:
       - nagioscore-repo
     display_name: RHEL 7.1 PPC
@@ -174,7 +190,7 @@ buildvariants:
     tasks:
       *build-tasks
 
-  - name: rhel72-z
+  - name: rhel72-s390x
     modules:
       - nagioscore-repo
     display_name: RHEL 7.2 zSeries
@@ -185,7 +201,7 @@ buildvariants:
     tasks:
       *build-tasks
 
-  - name: sles12-z
+  - name: sles12-s390x
     modules:
       - nagioscore-repo
     display_name: SLES 12 zSeries
