@@ -5,6 +5,11 @@ variables:
   - &build-tasks
       - name: build
       - name: push
+  - &build-tasks-with-0mq
+      - name: build
+      - name: push
+      - name: build-0mq
+      - name: push-curve-keygen
 
 #######################################
 #              Functions              #
@@ -71,9 +76,41 @@ tasks:
           permissions: public-read
           display_name: nagmq-client-${revision}.tar.gz
 
+  - name: build-0mq
+    commands:
+      - command: shell.exec
+        params:
+         script: |
+           set -o errexit
+           set -o verbose
+           root_dir=$(pwd)
+
+           wget https://s3.amazonaws.com/boxes.10gen.com/build/${zeromq_ver}.tar.gz
+           tar zxf ${zeromq_ver}.tar.gz
+           mkdir 0mq
+           cd ${zeromq_ver}
+
+           ./autogen.sh
+           ./configure 
+           make
+           make check
+           make DESTDIR=$root_dir/0mq install
+
+           tar zcf $root_dir/curve_keygen.tar.gz -C $root_dir/0mq/usr/local/bin .
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: curve_keygen.tar.gz
+          remote_file: nagmq/${build_variant}/curve_keygen-${build_id}.tar.gz
+          bucket: mciuploads
+          content_type: application/x-gzip
+          permissions: public-read
+          display_name: curve_keygen-${revision}.tar.gz
+
   - name: push
     depends_on:
-    - name: "*"
+    - name: "build"
     stepback: false
     commands:
       - command: s3Copy.copy
@@ -92,6 +129,22 @@ tasks:
           - {'source': { 'path': 'nagmq/${build_variant}/nagmq-client-${build_id}.tar.gz', 'bucket': 'mciuploads' },
              'destination': { 'path': 'build/nagmq/nagmq-client-${build_variant}-${revision}.tar.gz', 'bucket': 'boxes.10gen.com' }
             }
+
+
+  - name: push-curve-keygen
+    depends_on:
+    - name: "build-0mq"
+    stepback: false
+    commands:
+      - command: s3Copy.copy
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          s3_copy_files:
+          - {'source': { 'path': 'nagmq/${build_variant}/curve_keygen-${build_id}.tar.gz', 'bucket': 'mciuploads' },
+             'destination': { 'path': 'build/nagmq/curve_keygen-${build_variant}-${revision}.tar.gz', 'bucket': 'boxes.10gen.com' }
+            }
+
 post:
   - command: shell.exec
     params:
@@ -130,10 +183,11 @@ buildvariants:
     display_name: Ubuntu 16.04 ARM
     expansions:
       lib_path: "/usr/lib/x86_64-linux-gnu/"
+      zeromq_ver: "zeromq-4.1.4"
     run_on:
       - ubuntu1604-arm64-small
     tasks:
-      *build-tasks
+      *build-tasks-with-0mq
 
   - name: ubuntu1604-s390x
     modules:
@@ -141,10 +195,11 @@ buildvariants:
     display_name: Ubuntu 16.04 zSeries 
     expansions:
       lib_path: "/usr/lib/x86_64-linux-gnu/"
+      zeromq_ver: "zeromq-4.1.4"
     run_on:
       - ubuntu1604-zseries-small
     tasks:
-      *build-tasks
+      *build-tasks-with-0mq
 
   - name: ubuntu1604-x86_64
     modules:
@@ -152,10 +207,11 @@ buildvariants:
     display_name: Ubuntu 16.04
     expansions:
       lib_path: "/usr/lib/x86_64-linux-gnu/"
+      zeromq_ver: "zeromq-4.1.4"
     run_on:
       - ubuntu1604-test
     tasks:
-      *build-tasks
+      *build-tasks-with-0mq
 
   - name: ubuntu1604-ppc64le
     modules:
@@ -163,10 +219,11 @@ buildvariants:
     display_name: Ubuntu 16.04 PPC
     expansions:
       lib_path: "/usr/lib/x86_64-linux-gnu/"
+      zeromq_ver: "zeromq-4.1.4"
     run_on:
       - ubuntu1604-power8-test
     tasks:
-      *build-tasks
+      *build-tasks-with-0mq
 
   - name: osx-x86_64
     modules:
