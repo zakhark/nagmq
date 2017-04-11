@@ -166,17 +166,6 @@ modules:
 #           Buildvariants             #
 #######################################
 buildvariants:
-  - name: ubuntu1404-x86_64
-    modules:
-      - nagioscore-repo
-    display_name: Ubuntu 14.04
-    run_on:
-      - ubuntu1404-test
-    expansions:
-      lib_path: "/usr/lib/x86_64-linux-gnu/"
-    tasks:
-      *build-tasks
-
   - name: ubuntu1604-aarch64
     modules:
       - nagioscore-repo
