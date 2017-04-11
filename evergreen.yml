@@ -258,3 +258,15 @@ buildvariants:
       - suse12-zseries-test
     tasks:
       *build-tasks
+
+  - name: rhel67-s390x
+    modules:
+      - nagioscore-repo
+    display_name: RHEL 6.7 zSeries
+    expansions:
+      lib_path: "/usr/lib/"
+      extra_options: 'libpcre_LIBS="-L/lib64" libpcre_CFLAGS="-I/usr/include"'
+    run_on:
+      - rhel67-zseries-test
+    tasks:
+      *build-tasks
