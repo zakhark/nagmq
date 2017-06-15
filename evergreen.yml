@@ -217,11 +217,11 @@ buildvariants:
   - name: osx-x86_64
     modules:
       - nagioscore-repo
-    display_name: Mac OSX 10.10
+    display_name: Mac OSX 10.12
     expansions:
       lib_path: "/usr/local/lib/"
     run_on:
-      - osx-1010
+      - macos-1012
     tasks:
       *build-tasks
 
